@@ -70,7 +70,7 @@ if [ "$?" -gt "0" ];
     echo "apt-get update"
     echo "apt install -y make build-essential libtool software-properties-common autoconf libssl-dev libboost-dev libboost-chrono-dev libboost-filesystem-dev \
 libboost-program-options-dev libboost-system-dev libboost-test-dev libboost-thread-dev sudo automake git pwgen curl libdb4.8-dev \
-bsdmainutils libdb4.8++-dev libminiupnpc-dev libgmp3-dev"
+bsdmainutils libdb4.8++-dev libminiupnpc-dev libgmp3-dev pkg-config libevent-dev"
  exit 1
 fi
 
@@ -223,7 +223,7 @@ function create_key() {
   read -e DIGIFELKEY
   if [[ -z "$DIGIFELKEY" ]]; then
   su $DIGIFELUSER -c "$DIGIFEL_DAEMON -conf=$DIGIFELFOLDER/$CONFIG_FILE -datadir=$DIGIFELFOLDER"
-  sleep 5
+  sleep 20
   if [ -z "$(ps axo user:15,cmd:100 | egrep ^$DIGIFELUSER | grep $DIGIFEL_DAEMON)" ]; then
    echo -e "${RED}Digifeld server couldn't start. Check /var/log/syslog for errors.{$NC}"
    exit 1
