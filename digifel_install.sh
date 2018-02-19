@@ -3,6 +3,7 @@
 TMP_FOLDER=$(mktemp -d)
 CONFIG_FILE="digifel.conf"
 DIGIFEL_DAEMON="/usr/local/bin/digifeld"
+DIGIFEL_CLI="/usr/local/bin/digifel-cli"
 DIGIFEL_REPO="https://github.com/digifel/digifel-core"
 DEFAULTDIGIFELPORT=10070
 DEFAULTDIGIFELUSER="digifel"
@@ -58,7 +59,7 @@ apt-get update >/dev/null 2>&1
 apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" make software-properties-common \
 build-essential libtool autoconf libssl-dev libboost-dev libboost-chrono-dev libboost-filesystem-dev libboost-program-options-dev \
 libboost-system-dev libboost-test-dev libboost-thread-dev sudo automake git wget pwgen curl libdb4.8-dev bsdmainutils libdb4.8++-dev \
-libminiupnpc-dev libgmp3-dev ufw fail2ban pkg-config libevent-dev >/dev/null 2>&1
+libminiupnpc-dev libgmp3-dev ufw fail2ban >/dev/null 2>&1
 clear
 if [ "$?" -gt "0" ];
   then
@@ -69,7 +70,7 @@ if [ "$?" -gt "0" ];
     echo "apt-get update"
     echo "apt install -y make build-essential libtool software-properties-common autoconf libssl-dev libboost-dev libboost-chrono-dev libboost-filesystem-dev \
 libboost-program-options-dev libboost-system-dev libboost-test-dev libboost-thread-dev sudo automake git pwgen curl libdb4.8-dev \
-bsdmainutils libdb4.8++-dev libminiupnpc-dev libgmp3-dev ufw fail2ban pkg-config libevent-dev"
+bsdmainutils libdb4.8++-dev libminiupnpc-dev libgmp3-dev"
  exit 1
 fi
 
@@ -101,8 +102,8 @@ function compile_digifel() {
   ./configure
   make
   compile_error Digifel
-  chmod +x digifeld
-  cp -a digifeld /usr/local/bin
+  make install
+  compile_error Digifel
   cd ~
   rm -rf $TMP_FOLDER
   clear
@@ -127,11 +128,23 @@ Description=Digifel service
 After=network.target
 
 [Service]
-ExecStart=$DIGIFEL_DAEMON -conf=$DIGIFELFOLDER/$CONFIG_FILE -datadir=$DIGIFELFOLDER
-ExecStop=$DIGIFEL_DAEMON -conf=$DIGIFELFOLDER/$CONFIG_FILE -datadir=$DIGIFELFOLDER stop
-Restart=on-abort
 User=$DIGIFELUSER
 Group=$DIGIFELUSER
+
+Type=forking
+PIDFile=$DIGIFELFOLDER/$DIGIFELUSER.pid
+
+
+ExecStart=$DIGIFEL_DAEMON -daemon -pid $DIGIFELFOLDER/$DIGIFELUSER.pid -conf=$DIGIFELFOLDER/$CONFIG_FILE -datadir=$DIGIFELFOLDER
+ExecStop=-$DIGIFEL_CLI -conf=$DIGIFELFOLDER/$CONFIG_FILE -datadir=$DIGIFELFOLDER stop
+
+Restart=always
+PrivateTmp=true
+TimeoutStopSec=60s
+TimeoutStartSec=2s
+StartLimitInterval=120s
+StartLimitBurst=5
+
 
 [Install]
 WantedBy=multi-user.target
@@ -215,8 +228,8 @@ function create_key() {
    echo -e "${RED}Digifeld server couldn't start. Check /var/log/syslog for errors.{$NC}"
    exit 1
   fi
-  DIGIFELKEY=$(su $DIGIFELUSER -c "$DIGIFEL_DAEMON -conf=$DIGIFELFOLDER/$CONFIG_FILE -datadir=$DIGIFELFOLDER masternode genkey")
-  su $DIGIFELUSER -c "$DIGIFEL_DAEMON -conf=$DIGIFELFOLDER/$CONFIG_FILE -datadir=$DIGIFELFOLDER stop"
+  DIGIFELKEY=$(su $DIGIFELUSER -c "$DIGIFEL_CLI -conf=$DIGIFELFOLDER/$CONFIG_FILE -datadir=$DIGIFELFOLDER masternode genkey")
+  su $DIGIFELUSER -c "$DIGIFEL_CLI -conf=$DIGIFELFOLDER/$CONFIG_FILE -datadir=$DIGIFELFOLDER stop"
 fi
 }
 
@@ -225,7 +238,7 @@ function update_config() {
   cat << EOF >> $DIGIFELFOLDER/$CONFIG_FILE
 maxconnections=256
 masternode=1
-masternodeaddr=$NODEIP:$DIGIFELPORT
+externalip=$NODEIP:$DIGIFELPORT
 masternodeprivkey=$DIGIFELKEY
 EOF
   chown -R $DIGIFELUSER: $DIGIFELFOLDER >/dev/null
