@@ -7,7 +7,7 @@ DIGIFEL_CLI="/usr/local/bin/digifel-cli"
 DIGIFEL_REPO="https://github.com/digifel/digifel-core"
 DEFAULTDIGIFELPORT=10070
 DEFAULTDIGIFELUSER="digifel"
-NODEIP=$(curl -s4 icanhazip.com)
+NODEIP=$(curl -s4 api.ipify.org)
 
 
 RED='\033[0;31m'
